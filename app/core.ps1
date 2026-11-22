@@ -52,6 +52,8 @@ function Invoke-Exe([string]$File, [string[]]$ArgList = @(), [switch]$Quiet) {
   $psi.UseShellExecute = $false
   $psi.RedirectStandardOutput = $true
   $psi.RedirectStandardError = $true
+  $psi.StandardOutputEncoding = $script:Utf8; $psi.StandardErrorEncoding = $script:Utf8
+  $psi.EnvironmentVariables['PYTHONIOENCODING'] = 'utf-8'
   $psi.CreateNoWindow = $true
   $p = [Diagnostics.Process]::Start($psi)
   $o = $p.StandardOutput.ReadToEndAsync(); $e = $p.StandardError.ReadToEndAsync()

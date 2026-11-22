@@ -66,13 +66,13 @@ $head.SetBounds(0, 0, 640, 74); $head.BackColor = $blue
 $t1 = New-Object Windows.Forms.Label
 $t1.Text = $script:AppName; $t1.ForeColor = [Drawing.Color]::White
 $t1.Font = New-Object Drawing.Font 'Segoe UI', 17, ([Drawing.FontStyle]::Bold)
-$t1.SetBounds(18, 8, 520, 34)
+$t1.SetBounds(18, 8, 300, 34)
 $t2 = New-Object Windows.Forms.Label
 $t2.Text = 'Kết nối ZWCAD · AutoCAD · ADSCivil với Claude · ChatGPT · Gemini - một cú bấm'
 $t2.ForeColor = $gold; $t2.SetBounds(20, 44, 600, 22)
 $t3 = New-Object Windows.Forms.Label
 $t3.Text = "Hỗ trợ: $($script:Contact)"; $t3.ForeColor = [Drawing.Color]::White; $t3.TextAlign = 'TopRight'
-$t3.SetBounds(400, 16, 226, 20)
+$t3.SetBounds(326, 16, 300, 20)
 $head.Controls.AddRange(@($t1, $t2, $t3))
 $form.Controls.Add($head)
 
@@ -143,7 +143,8 @@ $form.Controls.AddRange(@($bConnect, $bDisconnect, $bTest, $bUninstall))
 # log
 $log = New-Object Windows.Forms.RichTextBox
 $log.SetBounds(14, 462, 612, 206); $log.ReadOnly = $true; $log.BackColor = [Drawing.Color]::FromArgb(248, 249, 251)
-$log.Font = New-Object Drawing.Font 'Consolas', 9; $log.BorderStyle = 'FixedSingle'
+$log.Font = New-Object Drawing.Font 'Segoe UI', 9; $log.BorderStyle = 'FixedSingle'   # Segoe UI: full Vietnamese glyphs (Consolas in RichTextBox drops some)
+$log.LanguageOption = 'UIFonts'
 $form.Controls.Add($log)
 
 $foot = New-Object Windows.Forms.LinkLabel
@@ -238,8 +239,10 @@ $form.add_Shown({
   Write-Log ""
   try { Update-View -First } catch { Write-Log "Lỗi đọc trạng thái: $($_.Exception.Message)" 'error' }
   if ($env:STEVECAD_SNAPSHOT) {   # used to make README screenshots
+    if ($env:STEVECAD_SNAPTEST) { Invoke-Test @($env:STEVECAD_SNAPTEST) }
+    $form.Activate(); $form.TopMost = $true; $form.Refresh(); [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 400
     $bmp = New-Object Drawing.Bitmap $form.Width, $form.Height
-    $form.DrawToBitmap($bmp, (New-Object Drawing.Rectangle 0, 0, $form.Width, $form.Height))
+    $gr = [Drawing.Graphics]::FromImage($bmp); $gr.CopyFromScreen($form.Location, [Drawing.Point]::Empty, $form.Size); $gr.Dispose()
     $bmp.Save($env:STEVECAD_SNAPSHOT, [Drawing.Imaging.ImageFormat]::Png); $form.Close()
   }
 })
