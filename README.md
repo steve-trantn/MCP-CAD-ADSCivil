@@ -9,9 +9,11 @@ ADSCivil NW 2027 đã có sẵn trợ lý AI (lệnh `ADSAI`, chạy Claude) và
 
 > Repo **không chứa** file chạy hay dữ liệu của ADSCivil (`.zrx`, `.exe`, `standards.sqlite`). Các script chép chúng từ bản ADSCivil 2027 đã cài trên máy.
 
+> **Không có ADSCivil, chỉ có ZWCAD?** Dùng gói [**ZWCAD-MCP**](https://github.com/steve-trantn/ZWCAD-MCP): 35 tool vẽ, sửa, đọc bản vẽ, cài riêng. Hai gói chạy song song được.
+
 ## Tải về và cài đặt (3 bước)
 
-1. **Tải về:** [**Download ZIP**](https://github.com/steve-trantn/ADSCivil-MCP-CodeX-Gemini/archive/refs/heads/main.zip), rồi giải nén ra một thư mục bất kỳ (ví dụ Desktop).
+1. **Tải về:** vào trang [**Releases**](https://github.com/steve-trantn/MCP-CAD-ADSCivil/releases/latest) và tải file `ADSCivil-MCP-*.zip` (hoặc dùng [Download ZIP](https://github.com/steve-trantn/MCP-CAD-ADSCivil/archive/refs/heads/main.zip)), rồi giải nén ra một thư mục bất kỳ (ví dụ Desktop).
 2. **Bấm đúp `CaiDat.cmd`** trong thư mục vừa giải nén.
 3. **Chọn trong menu:**
 
