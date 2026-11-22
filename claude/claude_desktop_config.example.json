@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "adscivil": {
+      "command": "C:\\Program Files\\BZS\\ADSCivil NW 2027 For ZWCAD 2026\\AdsMcpServer.exe",
+      "args": []
+    }
+  }
+}
