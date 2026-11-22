@@ -16,21 +16,28 @@
 #>
 param(
   [string]$Server    = "C:\Program Files\BZS\ADSCivil NW 2027 For ZWCAD 2026\AdsMcpServer.exe",
-  [string]$Workspace = (Join-Path $env:USERPROFILE 'ADSCivil-Codex')
+  [string]$Workspace = (Join-Path $env:USERPROFILE 'ADSCivil-Codex'),
+  [switch]$Uninstall
 )
 $ErrorActionPreference = 'Stop'
-if (-not (Test-Path $Server)) { throw "AdsMcpServer.exe not found: $Server" }
 
 $cx = (Get-Command codex -ErrorAction SilentlyContinue).Source
 if (-not $cx) {
   $pkg = Get-AppxPackage OpenAI.Codex -ErrorAction SilentlyContinue | Select-Object -First 1
   if ($pkg) { $cx = Join-Path $pkg.InstallLocation 'app\resources\codex.exe' }
 }
-if (-not $cx -or -not (Test-Path $cx)) { throw "codex.exe not found. Install the Codex app or: npm install -g @openai/codex" }
+if (-not $cx -or -not (Test-Path $cx)) { throw "Khong thay Codex. Cai app Codex (Microsoft Store) hoac: npm install -g @openai/codex" }
 Write-Host "codex: $cx"
 
 $cfg = Join-Path $env:USERPROFILE '.codex\config.toml'
 if (Test-Path $cfg) { Copy-Item $cfg "$cfg.bak-$(Get-Date -Format yyyyMMdd-HHmmss)" }
+
+if ($Uninstall) {
+  & $cx mcp remove adscivil
+  Write-Host "Da go adscivil khoi Codex. Thu muc $Workspace duoc giu lai (xoa tay neu muon)."
+  return
+}
+if (-not (Test-Path $Server)) { throw "Khong thay AdsMcpServer.exe: $Server" }
 
 & $cx mcp remove adscivil 2>$null | Out-Null
 & $cx mcp add adscivil -- $Server

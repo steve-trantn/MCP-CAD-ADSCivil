@@ -1,53 +1,81 @@
 <#
 .SYNOPSIS
   Bring the ADSCivil 2027 AI assistant (MCP) to ADSCivil 2026 and load it at every ZWCAD start.
+  Usually run through CaiDat.cmd, which finds the folders and asks for admin rights.
 
 .DESCRIPTION
-  1. Copies Ads.System.AI.Assistant.zrx, AdsMcpServer.exe and the AdsAI\ folder
-     from the ADSCivil 2027 install folder into the ADSCivil 2026 install folder.
-  2. Backs up ZWCAD.lsp in the 2026 folder and appends zwcad\ads-ai-autoload.lsp
-     to it (only once: it checks for the marker line).
-  Run in an elevated PowerShell if the install folder is under C:\Program Files
-  and is not writable for your user. Close ADSCivil 2026 first.
+  Install:
+    1. Copies Ads.System.AI.Assistant.zrx, AdsMcpServer.exe and AdsAI\ from the 2027 folder to the 2026 folder.
+    2. Backs up ZWCAD.lsp in the 2026 folder and appends zwcad\ads-ai-autoload.lsp (only once).
+  -Uninstall:
+    Removes the auto-load block from ZWCAD.lsp (backup first) and deletes the copied files.
+  Close ADSCivil 2026 first. Needs admin rights when the folder is under C:\Program Files.
 
 .EXAMPLE
-  powershell -ExecutionPolicy Bypass -File scripts\install-2026-autoload.ps1
+  powershell -ExecutionPolicy Bypass -File scripts\install-2026-autoload.ps1 -Source "<2027 folder>" -Target "<2026 folder>"
 #>
 param(
   [string]$Source = "C:\Program Files\BZS\ADSCivil NW 2027 For ZWCAD 2026",
-  [string]$Target = "C:\Program Files\BZS\ADSCivil NW 2026 For ZWCAD 2026"
+  [string]$Target = "C:\Program Files\BZS\ADSCivil NW 2026 For ZWCAD 2026",
+  [switch]$Uninstall,
+  [switch]$PauseAtEnd
 )
 $ErrorActionPreference = 'Stop'
 $marker  = '(defun ads-ai-autoload'
 $snippet = Join-Path $PSScriptRoot '..\zwcad\ads-ai-autoload.lsp'
+$files   = @('Ads.System.AI.Assistant.zrx', 'AdsMcpServer.exe', 'AdsAI')
+$utf8    = New-Object Text.UTF8Encoding($false)
+$exit    = 0
 
-foreach ($p in @($Source, $Target)) {
-  if (-not (Test-Path $p)) { throw "Folder not found: $p" }
+try {
+  if (-not (Test-Path $Target)) { throw "Khong thay thu muc ADSCivil 2026: $Target" }
+  $lsp = Join-Path $Target 'ZWCAD.lsp'
+  if (-not (Test-Path $lsp)) { throw "Khong thay ZWCAD.lsp trong $Target" }
+  $text = [IO.File]::ReadAllText($lsp)
+
+  if ($Uninstall) {
+    Write-Host "[1/2] Go doan tu nap khoi ZWCAD.lsp..."
+    $rx = '(?s)(\r?\n)*;; =+\r?\n;; (\[[^\]]*\] )?ADSCivil AI \(MCP\).*?\(ads-ai-autoload\)[ \t]*(\r?\n)?'
+    if ($text -match $rx) {
+      Copy-Item $lsp "$lsp.bak-$(Get-Date -Format yyyyMMdd-HHmmss)"
+      [IO.File]::WriteAllText($lsp, ([regex]::Replace($text, $rx, "`r`n")), $utf8)
+      Write-Host "      Da go."
+    } else { Write-Host "      Khong co doan tu nap, bo qua." }
+    Write-Host "[2/2] Xoa file module AI da chep..."
+    if ((Resolve-Path $Source -ErrorAction SilentlyContinue).Path -eq (Resolve-Path $Target).Path) {
+      Write-Host "      Thu muc nguon trung thu muc dich, khong xoa."
+    } else {
+      foreach ($f in $files) { $p = Join-Path $Target $f; if (Test-Path $p) { Remove-Item $p -Recurse -Force; Write-Host "      Da xoa $f" } }
+    }
+    Write-Host ""
+    Write-Host "XONG: da go tro ly AI khoi ADSCivil 2026."
+  } else {
+    if (-not (Test-Path $Source)) { throw "Khong thay thu muc ADSCivil 2027: $Source" }
+    foreach ($f in $files) {
+      if (-not (Test-Path (Join-Path $Source $f))) { throw "Thieu trong thu muc 2027: $f (can ADSCivil NW 2027 ban co tro ly AI)" }
+    }
+    Write-Host "[1/2] Chep module AI tu 2027 sang 2026..."
+    foreach ($f in $files) { Copy-Item (Join-Path $Source $f) $Target -Recurse -Force }
+
+    Write-Host "[2/2] Them doan tu nap vao ZWCAD.lsp..."
+    if ($text.Contains($marker)) {
+      Write-Host "      ZWCAD.lsp da co doan tu nap, bo qua."
+    } else {
+      $bak = "$lsp.bak-" + (Get-Date -Format 'yyyyMMdd-HHmmss')
+      Copy-Item $lsp $bak
+      $add = [IO.File]::ReadAllText((Resolve-Path $snippet))
+      $nl  = if ($text.EndsWith("`n")) { '' } else { "`r`n" }
+      [IO.File]::WriteAllText($lsp, $text + $nl + "`r`n" + $add, $utf8)
+      Write-Host "      Da them. Ban sao luu: $bak"
+    }
+    Write-Host ""
+    Write-Host "XONG. Mo ADSCivil 2026: dong lenh hien 'ADSCivil AI: da nap...'. Go ADSAI de mo tro ly."
+    Write-Host "Luu y: cai lai ADSCivil 2026 se ghi de ZWCAD.lsp - khi do chay lai CaiDat.cmd."
+  }
+} catch {
+  Write-Host ""
+  Write-Host "LOI: $($_.Exception.Message)" -ForegroundColor Red
+  $exit = 1
 }
-foreach ($f in @('Ads.System.AI.Assistant.zrx', 'AdsMcpServer.exe', 'AdsAI')) {
-  if (-not (Test-Path (Join-Path $Source $f))) { throw "Missing in source (ADSCivil 2027): $f" }
-}
-
-Write-Host "[1/2] Copying AI module from 2027 to 2026..."
-Copy-Item (Join-Path $Source 'Ads.System.AI.Assistant.zrx') $Target -Force
-Copy-Item (Join-Path $Source 'AdsMcpServer.exe') $Target -Force
-Copy-Item (Join-Path $Source 'AdsAI') $Target -Recurse -Force
-
-Write-Host "[2/2] Adding auto-load to ZWCAD.lsp..."
-$lsp = Join-Path $Target 'ZWCAD.lsp'
-if (-not (Test-Path $lsp)) { throw "ZWCAD.lsp not found in $Target" }
-$text = [IO.File]::ReadAllText($lsp)
-if ($text.Contains($marker)) {
-  Write-Host "      ZWCAD.lsp already has the auto-load block, nothing to do."
-} else {
-  $bak = "$lsp.bak-" + (Get-Date -Format 'yyyyMMdd-HHmmss')
-  Copy-Item $lsp $bak
-  $add = [IO.File]::ReadAllText((Resolve-Path $snippet))
-  $nl  = if ($text.EndsWith("`n")) { '' } else { "`r`n" }
-  [IO.File]::WriteAllText($lsp, $text + $nl + "`r`n" + $add, (New-Object Text.UTF8Encoding($false)))
-  Write-Host "      Done. Backup: $bak"
-}
-
-Write-Host ""
-Write-Host "OK. Start ADSCivil 2026: the command line shows 'ADSCivil AI: da nap...'. Type ADSAI."
-Write-Host "Note: reinstalling ADSCivil 2026 overwrites ZWCAD.lsp - run this script again."
+if ($PauseAtEnd) { Read-Host "Nhan Enter de dong" | Out-Null }
+exit $exit

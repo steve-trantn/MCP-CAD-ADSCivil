@@ -9,32 +9,48 @@ ADSCivil NW 2027 đã có sẵn trợ lý AI (lệnh `ADSAI`, chạy Claude) và
 
 > Repo **không chứa** file chạy hay dữ liệu của ADSCivil (`.zrx`, `.exe`, `standards.sqlite`). Các script chép chúng từ bản ADSCivil 2027 đã cài trên máy.
 
-## Yêu cầu
+## Tải về và cài đặt (3 bước)
 
-- Windows, ZWCAD 2026, **ADSCivil NW 2027 For ZWCAD 2026** đã cài. Mặc định script dùng `C:\Program Files\BZS\ADSCivil NW 2027 For ZWCAD 2026`.
-- ChatGPT: app **Codex** (Microsoft Store) hoặc Codex CLI, đăng nhập tài khoản ChatGPT.
-- Gemini: Node.js 20 trở lên, Gemini CLI (`npm install -g @google/gemini-cli`) và một **Gemini API key**.
+1. **Tải về:** [**Download ZIP**](https://github.com/steve-trantn/ADSCivil-MCP-CodeX-Gemini/archive/refs/heads/main.zip), rồi giải nén ra một thư mục bất kỳ (ví dụ Desktop).
+2. **Bấm đúp `CaiDat.cmd`** trong thư mục vừa giải nén.
+3. **Chọn trong menu:**
 
-## Cài đặt nhanh
-
-Mở PowerShell trong thư mục repo:
-
-```powershell
-# ChatGPT (Codex)
-powershell -ExecutionPolicy Bypass -File scripts\setup-codex.ps1
-
-# Gemini CLI
-powershell -ExecutionPolicy Bypass -File scripts\setup-gemini.ps1
-
-# ADSCivil 2026: chép module AI từ 2027 và tự nạp khi khởi động
-# (đóng ADSCivil 2026 trước; cần PowerShell "Run as administrator" nếu Program Files không ghi được)
-powershell -ExecutionPolicy Bypass -File scripts\install-2026-autoload.ps1
-
-# Kiểm tra MCP server (ADSCivil phải đang mở)
-powershell -ExecutionPolicy Bypass -File scripts\test-mcp.ps1
+```
+  1. Ket noi ChatGPT (app Codex)
+  2. Ket noi Gemini CLI
+  3. ADSCivil 2026: tu nap tro ly AI (lenh ADSAI)
+  4. Cai tat ca (1 + 2 + 3)
+  5. Kiem tra ket noi (mo ADSCivil truoc)
+  6. Go bo tat ca
 ```
 
-Các script đều sao lưu file cấu hình trước khi sửa (`*.bak-<thời gian>`). Chạy lại nhiều lần không sao.
+Trình cài tự làm các việc sau:
+
+- tìm thư mục cài ADSCivil 2027 và 2026, không cần sửa đường dẫn;
+- cài Gemini CLI (và Node.js nếu thiếu) khi được hỏi, nhận API key và tạo shortcut **Gemini ADSCivil** trên Desktop;
+- xin quyền admin khi cần ghi vào `Program Files`;
+- sao lưu mọi file cấu hình trước khi sửa (`*.bak-<thời gian>`).
+
+Chạy lại nhiều lần không sao. Mục **6** gỡ sạch và trả `ZWCAD.lsp` về như cũ.
+
+> Windows SmartScreen có thể cảnh báo khi chạy file tải từ Internet: bấm **More info → Run anyway**.
+
+## Yêu cầu
+
+- Windows 10/11, ZWCAD 2026, **ADSCivil NW 2027 For ZWCAD 2026** đã cài (bản có trợ lý AI và `AdsMcpServer.exe`).
+- ChatGPT: app **Codex** của OpenAI (Microsoft Store), đăng nhập tài khoản ChatGPT.
+- Gemini: một **Gemini API key** miễn phí tại <https://aistudio.google.com/apikey>. Node.js và Gemini CLI được trình cài tự cài.
+
+## Chạy không cần menu (cho IT, cài hàng loạt)
+
+```bat
+CaiDat.cmd -All                 :: cai 1 + 2 + 3
+CaiDat.cmd -Codex -Test         :: chi ChatGPT, roi kiem tra
+CaiDat.cmd -Uninstall           :: go tat ca
+CaiDat.cmd -All -Dir2027 "D:\ADSCivil 2027" -Dir2026 "D:\ADSCivil 2026"   :: thu muc cai khac mac dinh
+```
+
+Từng bước riêng nằm trong `scripts\` (`setup-codex.ps1`, `setup-gemini.ps1`, `install-2026-autoload.ps1`, `test-mcp.ps1`).
 
 ## ChatGPT (Codex)
 
@@ -121,7 +137,9 @@ Khi AI thật sự gọi tool, sẽ thấy dòng `adscivil/<tên tool>`. Nếu k
 ## Cấu trúc
 
 ```
-scripts/   setup-codex.ps1, setup-gemini.ps1, install-2026-autoload.ps1, test-mcp.ps1
+CaiDat.cmd     bấm đúp để cài (menu)
+VERSION
+scripts/   installer.ps1 (menu), setup-codex.ps1, setup-gemini.ps1, install-2026-autoload.ps1, test-mcp.ps1
 codex/     AGENTS.md, config.example.toml
 gemini/    GEMINI.md, Mo Gemini ADSCivil.cmd, settings.example.json
 claude/    claude_desktop_config.example.json

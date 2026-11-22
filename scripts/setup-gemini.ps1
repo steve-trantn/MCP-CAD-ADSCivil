@@ -15,13 +15,29 @@
 #>
 param(
   [string]$Server    = "C:\Program Files\BZS\ADSCivil NW 2027 For ZWCAD 2026\AdsMcpServer.exe",
-  [string]$Workspace = (Join-Path $env:USERPROFILE 'ADSCivil-Gemini')
+  [string]$Workspace = (Join-Path $env:USERPROFILE 'ADSCivil-Gemini'),
+  [switch]$Uninstall
 )
 $ErrorActionPreference = 'Stop'
 $utf8 = New-Object Text.UTF8Encoding($false)
-if (-not (Test-Path $Server)) { throw "AdsMcpServer.exe not found: $Server" }
-
 $gdir = Join-Path $env:USERPROFILE '.gemini'
+
+if ($Uninstall) {
+  $sf = Join-Path $gdir 'settings.json'
+  if (Test-Path $sf) {
+    $s = Get-Content $sf -Raw | ConvertFrom-Json
+    if ($s.PSObject.Properties['mcpServers'] -and $s.mcpServers.PSObject.Properties['adscivil']) {
+      Copy-Item $sf "$sf.bak-$(Get-Date -Format yyyyMMdd-HHmmss)"
+      $s.mcpServers.PSObject.Properties.Remove('adscivil')
+      [IO.File]::WriteAllText($sf, ($s | ConvertTo-Json -Depth 20), $utf8)
+    }
+  }
+  $lnk = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Gemini ADSCivil.lnk'
+  if (Test-Path $lnk) { Remove-Item $lnk -Force }
+  Write-Host "Da go adscivil khoi Gemini CLI. Thu muc $Workspace (co .env chua API key) duoc giu lai."
+  return
+}
+if (-not (Test-Path $Server)) { throw "Khong thay AdsMcpServer.exe: $Server" }
 New-Item -ItemType Directory -Force $gdir | Out-Null
 
 # settings.json: merge, keep what is already there
@@ -44,6 +60,15 @@ New-Item -ItemType Directory -Force $Workspace | Out-Null
 $tpl = Join-Path $PSScriptRoot '..\gemini'
 Copy-Item (Join-Path $tpl 'GEMINI.md') $Workspace -Force
 Copy-Item (Join-Path $tpl 'Mo Gemini ADSCivil.cmd') $Workspace -Force
+# desktop shortcut to the launcher
+try {
+  $lnk = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Gemini ADSCivil.lnk'
+  $sh = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk)
+  $sh.TargetPath = Join-Path $Workspace 'Mo Gemini ADSCivil.cmd'
+  $sh.WorkingDirectory = $Workspace
+  $sh.Save()
+  Write-Host "Desktop shortcut: $lnk"
+} catch { Write-Host "(Khong tao duoc shortcut tren Desktop: $($_.Exception.Message))" }
 Write-Host "Workspace: $Workspace"
 
 # trusted folders
