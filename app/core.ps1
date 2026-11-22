@@ -16,9 +16,9 @@ $script:Author    = 'Steve Tran'
 $script:Phone     = '0987 779 228'
 $script:Contact   = "$($script:Author) | $($script:Phone)"
 
-# open-source CAD-MCP server (https://github.com/daobataotie/CAD-MCP, MIT), pinned to a reviewed commit
-$script:UpstreamSha = 'daf7502951175e01aba9126a702400186ba2d4f9'
-$script:UpstreamZip = "https://github.com/daobataotie/CAD-MCP/archive/$($script:UpstreamSha).zip"
+# our own MCP server for ZWCAD / AutoCAD (folder server\ of this tool), installed to %LOCALAPPDATA%
+$script:ServerDir = Join-Path $script:AppHome 'server'
+$script:Settings  = Join-Path $script:AppHome 'settings.json'
 
 $script:CadList    = @('zwcad', 'autocad', 'adscivil')
 $script:CadLabel   = @{ zwcad = 'ZWCAD'; autocad = 'AutoCAD'; adscivil = 'ADSCivil' }
@@ -38,6 +38,14 @@ function Backup-File($f) { if (Test-Path $f) { Copy-Item $f "$f.bak-$(Get-Date -
 function Read-Json($f) {
   if (Test-Path $f) { $t = [IO.File]::ReadAllText($f); if ($t.Trim()) { return ($t | ConvertFrom-Json) } }
   return (New-Object PSObject)
+}
+function Get-Setting([string]$name, $default = $null) {
+  $s = Read-Json $script:Settings
+  if ($s.PSObject.Properties[$name]) { return $s.$name } else { return $default }
+}
+function Set-Setting([string]$name, $value) {
+  New-Item -ItemType Directory -Force $script:AppHome | Out-Null
+  $s = Read-Json $script:Settings; Set-Prop $s $name $value; Write-Json $script:Settings $s
 }
 function Write-Json($f, $obj) { [IO.File]::WriteAllText($f, ($obj | ConvertTo-Json -Depth 30), $script:Utf8) }
 function Set-Prop($obj, [string]$name, $value) {
@@ -186,7 +194,14 @@ function Find-Python {
 
 function Install-PythonEnv {
   $mark = Join-Path $script:AppHome 'venv\.ok'
-  if ((Test-Path $script:VenvPy) -and (Test-Path $mark)) { return }
+  $req = Join-Path $script:Root 'server\requirements.txt'
+  $want = [IO.File]::ReadAllText($req).Trim()
+  if ((Test-Path $script:VenvPy) -and (Test-Path $mark) -and ([IO.File]::ReadAllText($mark).Trim() -eq $want)) { return }
+  if (Test-Path $script:VenvPy) {
+    Write-Log "  Cập nhật thư viện Python..."
+    if ((Invoke-Exe $script:VenvPy @('-m', 'pip', 'install', '-q', '--disable-pip-version-check', '-r', $req)) -ne 0) { throw "Cài thư viện Python thất bại (kiểm tra Internet)." }
+    [IO.File]::WriteAllText($mark, $want, $script:Utf8); return
+  }
   $py = Find-Python
   if (-not $py) {
     Write-Log "  Máy chưa có Python 3.10+ (cần cho ZWCAD/AutoCAD)." 'warn'
@@ -198,49 +213,24 @@ function Install-PythonEnv {
     if (-not $py) { throw "Cài Python chưa xong. Đóng công cụ, mở lại rồi bấm Connect." }
   }
   Write-Log "  Python: $($py -join ' ')"
-  $req = Join-Path (Get-UpstreamDir) 'requirements.txt'
   Write-Log "  Tạo môi trường Python riêng và cài thư viện (1-2 phút)..."
   $pre = @($py | Select-Object -Skip 1)
   if ((Invoke-Exe $py[0] ($pre + @('-m', 'venv', (Join-Path $script:AppHome 'venv'))) -Quiet) -ne 0) { throw "Tạo môi trường Python thất bại." }
   if ((Invoke-Exe $script:VenvPy @('-m', 'pip', 'install', '-q', '--disable-pip-version-check', '-r', $req)) -ne 0) { throw "Cài thư viện Python thất bại (kiểm tra Internet)." }
-  Set-Content $mark 'ok'
+  [IO.File]::WriteAllText($mark, $want, $script:Utf8)
 }
 
-function Get-UpstreamDir {
-  $dir = Join-Path $script:AppHome ('cadmcp\_upstream-' + $script:UpstreamSha.Substring(0, 7))
-  if (Test-Path (Join-Path $dir 'src\server.py')) { return $dir }
-  Write-Log "  Tải CAD-MCP ($($script:UpstreamSha.Substring(0, 7))) từ GitHub..."
-  $base = Join-Path $script:AppHome 'cadmcp'
-  New-Item -ItemType Directory -Force $base | Out-Null
-  $zip = Join-Path $base 'cad-mcp.zip'; $tmp = Join-Path $base '_extract'
-  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-  $ProgressPreference = 'SilentlyContinue'
-  Invoke-WebRequest $script:UpstreamZip -OutFile $zip -UseBasicParsing
-  if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
-  Expand-Archive $zip $tmp -Force
-  if (Test-Path $dir) { Remove-Item $dir -Recurse -Force }
-  Move-Item (Get-ChildItem $tmp -Directory | Select-Object -First 1).FullName $dir
-  Remove-Item $tmp -Recurse -Force; Remove-Item $zip -Force
-  Remove-Item (Join-Path $dir 'imgs') -Recurse -Force -ErrorAction SilentlyContinue
-  return $dir
-}
-
-function Install-CadMcp([string]$cad) {
-  $src = Join-Path $script:AppHome "cadmcp\$cad\src"
-  $mark = Join-Path $script:AppHome "cadmcp\$cad\.sha"
-  if ((Test-Path (Join-Path $src 'server.py')) -and (Test-Path $mark) -and ((Get-Content $mark) -eq $script:UpstreamSha)) { Install-PythonEnv; return }
-  $up = Get-UpstreamDir
+# Copies the Steve CAD MCP server (server\ of this tool) to %LOCALAPPDATA%\SteveCADConnect\server.
+function Install-Server {
   Install-PythonEnv
-  if (Test-Path (Split-Path $src)) { Remove-Item (Split-Path $src) -Recurse -Force }
-  New-Item -ItemType Directory -Force (Split-Path $src) | Out-Null
-  Copy-Item (Join-Path $up 'src') $src -Recurse
-  $cf = Join-Path $src 'config.json'
-  $cfg = Read-Json $cf
-  if ($cad -eq 'zwcad') { $cfg.cad.type = 'ZWCAD'; $cfg.cad.progid = [string](Get-ZwcadProgId) }
-  else { $cfg.cad.type = 'AUTOCAD'; $cfg.cad.progid = '' }   # empty: the server tries every installed AutoCAD version
-  Write-Json $cf $cfg
-  Set-Content $mark $script:UpstreamSha
-  Write-Log "  Server $($script:CadLabel[$cad]) sẵn sàng."
+  $src = Join-Path $script:Root 'server'
+  if ((Resolve-Path $src).Path.TrimEnd('\') -ne $script:ServerDir) {
+    if (Test-Path $script:ServerDir) { Remove-Item $script:ServerDir -Recurse -Force }
+    New-Item -ItemType Directory -Force $script:ServerDir | Out-Null
+    Get-ChildItem $src -Force | Where-Object { $_.Name -ne '__pycache__' } | Copy-Item -Destination $script:ServerDir -Recurse -Force
+    Get-ChildItem $script:ServerDir -Recurse -Directory -Filter '__pycache__' | Remove-Item -Recurse -Force
+  }
+  Write-Log "  Steve CAD MCP server sẵn sàng."
 }
 
 # @{ command; args; cwd } for one of our MCP servers
@@ -250,8 +240,10 @@ function Get-ServerSpec([string]$cad) {
     if (-not $d) { throw "Không thấy ADSCivil NW 2027 (AdsMcpServer.exe)." }
     return @{ command = (Join-Path $d 'AdsMcpServer.exe'); args = @(); cwd = $d }
   }
-  $src = Join-Path $script:AppHome "cadmcp\$cad\src"
-  return @{ command = $script:VenvPy; args = @((Join-Path $src 'server.py')); cwd = $src }
+  $a = @((Join-Path $script:ServerDir 'run.py'), '--cad', $cad)
+  if ($cad -eq 'zwcad') { $pid0 = Get-ZwcadProgId; if ($pid0) { $a += @('--progid', $pid0) } }
+  if (Get-Setting 'AllowScript' $false) { $a += '--allow-script' }
+  return @{ command = $script:VenvPy; args = $a; cwd = $script:ServerDir }
 }
 
 # ======================= clients =======================
@@ -362,6 +354,13 @@ function Update-Workspace {
     if ($cads -contains $c) { $txt += "`r`n" + [IO.File]::ReadAllText((Join-Path $script:Root "CAD\$($script:CadLabel[$c])\AGENTS.part.md")) }
   }
   foreach ($n in 'AGENTS.md', 'GEMINI.md', 'CLAUDE.md') { [IO.File]::WriteAllText((Join-Path $script:Workspace $n), $txt, $script:Utf8) }
+  # skills (server\skills\<name>\SKILL.md): native Claude Code skills in the workspace; other AIs read them via get_skill
+  $sk = Join-Path $script:Root 'server\skills'
+  if (Test-Path $sk) {
+    $dst = Join-Path $script:Workspace '.claude\skills'
+    New-Item -ItemType Directory -Force $dst | Out-Null
+    Get-ChildItem $sk -Directory | ForEach-Object { Copy-Item $_.FullName $dst -Recurse -Force }
+  }
   Copy-Item (Join-Path $script:Root 'templates\Mo Gemini.cmd') $script:Workspace -Force
 }
 
@@ -418,7 +417,7 @@ function Install-Self {
   if (-not $same) {
     if (Test-Path $script:ToolDir) { Remove-Item $script:ToolDir -Recurse -Force }
     New-Item -ItemType Directory -Force $script:ToolDir | Out-Null
-    foreach ($i in 'app', 'CAD', 'templates', 'VERSION', 'README.md', 'Uninstall.cmd', 'Steve CAD-AI Connect.cmd') {
+    foreach ($i in 'app', 'CAD', 'server', 'templates', 'VERSION', 'README.md', 'Uninstall.cmd', 'Steve CAD-AI Connect.cmd') {
       $p = Join-Path $script:Root $i
       if (Test-Path $p) { Copy-Item $p $script:ToolDir -Recurse -Force }
     }
@@ -464,6 +463,14 @@ function Remove-OldInstalls {
     }
   }
   foreach ($l in 'Gemini ADSCivil.lnk', 'Gemini ZWCAD.lnk') { Remove-Item (Join-Path ([Environment]::GetFolderPath('Desktop')) $l) -Force -ErrorAction SilentlyContinue }
+  # v2 used the third-party CAD-MCP server; v3 has its own
+  $cadmcp = Join-Path $script:AppHome 'cadmcp'
+  if (Test-Path $cadmcp) {
+    $files0 = @((Join-Path $env:USERPROFILE '.codex\config.toml'), (Join-Path $env:USERPROFILE '.gemini\settings.json'), (Join-Path $env:USERPROFILE '.claude.json')) + @(Get-ClaudeDesktopConfigs)
+    $used = $false
+    foreach ($f in $files0) { if ((Test-Path $f) -and ([IO.File]::ReadAllText($f) -match 'SteveCADConnect\\{1,2}cadmcp')) { $used = $true } }
+    if (-not $used) { Remove-Item $cadmcp -Recurse -Force -ErrorAction SilentlyContinue; Write-Log "  Đã dọn server CAD-MCP cũ (v2)." }
+  }
   $old = Join-Path $env:LOCALAPPDATA 'ZWCAD-MCP'
   if (-not (Test-Path $old)) { return }
   $files = @((Join-Path $env:USERPROFILE '.codex\config.toml'), (Join-Path $env:USERPROFILE '.gemini\settings.json'), (Join-Path $env:USERPROFILE '.claude.json')) + @(Get-ClaudeDesktopConfigs)
@@ -471,6 +478,32 @@ function Remove-OldInstalls {
   Remove-Item $old -Recurse -Force -ErrorAction SilentlyContinue
   Remove-Item (Join-Path ([Environment]::GetFolderPath('Desktop')) 'Gemini ZWCAD.lnk') -Force -ErrorAction SilentlyContinue
   Write-Log "  Đã dọn bản ZWCAD-MCP cũ."
+}
+
+# v2 -> v3: AI assistants that still point at the old CAD-MCP copy are switched to the new server.
+function Update-OldServerRefs {
+  $files = @{ codex = @(Join-Path $env:USERPROFILE '.codex\config.toml'); gemini = @(Join-Path $env:USERPROFILE '.gemini\settings.json');
+              claudecode = @(Join-Path $env:USERPROFILE '.claude.json'); claude = @(Get-ClaudeDesktopConfigs) }
+  $conn = Get-Connections
+  foreach ($cl in $script:ClientList) {
+    $old = $false
+    foreach ($f in $files[$cl]) { if ($f -and (Test-Path $f) -and ([IO.File]::ReadAllText($f) -match 'SteveCADConnect\\{1,2}cadmcp')) { $old = $true } }
+    if (-not $old) { continue }
+    foreach ($c in @('zwcad', 'autocad')) {
+      if ($conn[$cl] -notcontains $c) { continue }
+      try {
+        Install-Server
+        $spec = Get-ServerSpec $c
+        switch ($cl) {
+          'codex'      { Add-ToCodex $c $spec }
+          'gemini'     { Add-ToGemini $c $spec }
+          'claude'     { Add-ToClaudeDesktop $c $spec }
+          'claudecode' { Add-ToClaudeCode $c $spec }
+        }
+        Write-Log "  Nâng cấp $($script:ClientLabel[$cl])/$c lên server mới." 'ok'
+      } catch { Write-Log "  Lỗi nâng cấp $($script:ClientLabel[$cl])/$c : $($_.Exception.Message)" 'error' }
+    }
+  }
 }
 
 # ======================= main actions =======================
@@ -481,7 +514,7 @@ function Invoke-Connect([string[]]$Cads, [string[]]$Clients, [bool]$Ads2026 = $f
   $specs = @{}
   foreach ($c in $Cads) {
     Write-Log "[$($script:CadLabel[$c])] chuẩn bị MCP server..."
-    if ($c -ne 'adscivil') { Install-CadMcp $c }
+    if ($c -ne 'adscivil') { Install-Server }
     $specs[$c] = Get-ServerSpec $c
   }
   $ok = 0; $fail = 0
@@ -506,6 +539,7 @@ function Invoke-Connect([string[]]$Cads, [string[]]$Clients, [bool]$Ads2026 = $f
     Write-Log "[ADSCivil 2026] tự nạp trợ lý ADSAI..."
     try { Set-Ads2026Autoload; Write-Log "  Đã bật tự nạp." 'ok' } catch { Write-Log "  Lỗi: $($_.Exception.Message)" 'error'; $fail++ }
   }
+  Update-OldServerRefs
   Update-Workspace
   Install-Self
   Remove-OldInstalls
@@ -607,14 +641,14 @@ function Invoke-Test([string[]]$Cads) {
       if (-not (Test-Path $spec.command) -or ($spec.args -and -not (Test-Path $spec.args[0]))) { Write-Log "[$($script:CadLabel[$c])] chưa cài - bấm Connect trước." 'warn'; continue }
       $proc = @{ zwcad = 'ZWCAD'; adscivil = 'ZWCAD'; autocad = 'acad' }[$c]
       $running = [bool](Get-Process $proc -ErrorAction SilentlyContinue)
-      $call = if (-not $running) { '' } elseif ($c -eq 'adscivil') { 'get_drawing_info' } else { 'list_layers' }
+      $call = if (-not $running) { '' } elseif ($c -eq 'adscivil') { 'get_drawing_info' } else { 'info' }
       $r = Test-McpServer $spec $call
       Write-Log "[$($script:CadLabel[$c])] server chạy, $($r.tools) tool." 'ok'
       if (-not $running) { Write-Log "  $($script:CadLabel[$c]) chưa mở - mở phần mềm và một bản vẽ để thử đọc bản vẽ." 'warn' }
       elseif ($c -eq 'adscivil') { Write-Log ("  " + ($r.text -replace '\s+', ' ').Substring(0, [Math]::Min(220, ($r.text -replace '\s+', ' ').Length))) }
       else {
         try { $j = $r.text | ConvertFrom-Json } catch { $j = $null }
-        if ($j -and $j.success) { Write-Log "  Bản vẽ đang mở có $(@($j.layers).Count) layer: $((@($j.layers) | Select-Object -First 6 | ForEach-Object { $_.name }) -join ', ')..." 'ok' }
+        if ($j -and $j.drawing) { Write-Log "  Đọc được bản vẽ $(Split-Path $j.drawing -Leaf): $($j.modelspace_objects) đối tượng, layer hiện hành '$($j.current_layer)', đơn vị $($j.units)." 'ok' }
         else { Write-Log "  Chưa đọc được bản vẽ: $($r.text)" 'warn' }
       }
     } catch { Write-Log "[$($script:CadLabel[$c])] lỗi: $($_.Exception.Message)" 'error' }

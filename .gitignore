@@ -12,3 +12,5 @@
 *.dll
 *.sqlite
 AdsAI/
+__pycache__/
+*.pyc

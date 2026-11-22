@@ -10,10 +10,11 @@
     -Client claude,claudecode,codex,gemini   (mặc định: những trợ lý có trên máy)
     -Ads2026                            (ADSCivil 2026 tự nạp trợ lý ADSAI)
     -GeminiKey <key>
+    -AllowScript / -AllowScript:$false  (cho AI chạy script Python trong ZWCAD/AutoCAD - nâng cao)
 #>
 param(
   [switch]$Connect, [switch]$Disconnect, [switch]$Test, [switch]$Uninstall,
-  [string[]]$Cad, [string[]]$Client, [switch]$Ads2026, [string]$GeminiKey = ''
+  [string[]]$Cad, [string[]]$Client, [switch]$Ads2026, [string]$GeminiKey = '', [switch]$AllowScript
 )
 . (Join-Path $PSScriptRoot 'core.ps1')
 Get-ChildItem $script:Root -Recurse -File -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue
@@ -32,6 +33,7 @@ if ($Connect -or $Disconnect -or $Test -or $Uninstall) {
   $Cad = @($Cad -split ',' | ForEach-Object { $_.Trim().ToLower() } | Where-Object { $_ })
   $Client = @($Client -split ',' | ForEach-Object { $_.Trim().ToLower() } | Where-Object { $_ })
   $code = 0
+  if ($PSBoundParameters.ContainsKey('AllowScript')) { Set-Setting 'AllowScript' ([bool]$AllowScript) }
   try {
     if ($Uninstall)  { Invoke-Uninstall }
     elseif ($Disconnect) { Invoke-Disconnect $Cad $Client ([bool]$Ads2026) }
@@ -55,7 +57,7 @@ $form = New-Object Windows.Forms.Form
 $form.Text = "$($script:AppName) $($script:Version)"
 $form.StartPosition = 'CenterScreen'
 $form.FormBorderStyle = 'FixedSingle'; $form.MaximizeBox = $false
-$form.ClientSize = New-Object Drawing.Size 640, 700
+$form.ClientSize = New-Object Drawing.Size 640, 728
 $form.Font = $fontN
 $form.BackColor = [Drawing.Color]::White
 try { $form.Icon = New-AppIcon } catch {}
@@ -89,7 +91,7 @@ function New-Note([int]$x, [int]$y, [int]$w) {
 
 # 1. CAD
 $g1 = New-Object Windows.Forms.GroupBox
-$g1.Text = '1. Phần mềm CAD'; $g1.Font = $fontB; $g1.SetBounds(14, 84, 612, 140)
+$g1.Text = '1. Phần mềm CAD'; $g1.Font = $fontB; $g1.SetBounds(14, 84, 612, 168)
 $cadChk = @{}; $cadNote = @{}
 $y = 24
 foreach ($c in $script:CadList) {
@@ -102,11 +104,15 @@ $chk26 = New-Object Windows.Forms.CheckBox
 $chk26.Text = 'ADSCivil 2026: tự nạp trợ lý ADSAI khi khởi động'; $chk26.Font = $fontN
 $chk26.SetBounds(36, $y, 420, 24)
 $g1.Controls.Add($chk26)
+$chkScript = New-Object Windows.Forms.CheckBox
+$chkScript.Text = 'ZWCAD/AutoCAD: cho AI chạy script Python (nâng cao - AI tự chạy mã trên máy)'; $chkScript.Font = $fontN
+$chkScript.SetBounds(36, ($y + 28), 560, 24)
+$g1.Controls.Add($chkScript)
 $form.Controls.Add($g1)
 
 # 2. AI
 $g2 = New-Object Windows.Forms.GroupBox
-$g2.Text = '2. Trợ lý AI'; $g2.Font = $fontB; $g2.SetBounds(14, 230, 612, 172)
+$g2.Text = '2. Trợ lý AI'; $g2.Font = $fontB; $g2.SetBounds(14, 258, 612, 172)
 $cliChk = @{}; $cliNote = @{}
 $y = 24
 foreach ($c in $script:ClientList) {
@@ -128,7 +134,7 @@ $form.Controls.Add($g2)
 # buttons
 function New-Btn([string]$text, [int]$x, [Drawing.Color]$back, [Drawing.Color]$fore) {
   $b = New-Object Windows.Forms.Button
-  $b.Text = $text; $b.SetBounds($x, 412, 142, 40); $b.Font = $fontB
+  $b.Text = $text; $b.SetBounds($x, 440, 142, 40); $b.Font = $fontB
   $b.FlatStyle = 'Flat'; $b.BackColor = $back; $b.ForeColor = $fore
   $b.FlatAppearance.BorderColor = $blue
   return $b
@@ -142,16 +148,16 @@ $form.Controls.AddRange(@($bConnect, $bDisconnect, $bTest, $bUninstall))
 
 # log
 $log = New-Object Windows.Forms.RichTextBox
-$log.SetBounds(14, 462, 612, 206); $log.ReadOnly = $true; $log.BackColor = [Drawing.Color]::FromArgb(248, 249, 251)
+$log.SetBounds(14, 490, 612, 206); $log.ReadOnly = $true; $log.BackColor = [Drawing.Color]::FromArgb(248, 249, 251)
 $log.Font = New-Object Drawing.Font 'Segoe UI', 9; $log.BorderStyle = 'FixedSingle'   # Segoe UI: full Vietnamese glyphs (Consolas in RichTextBox drops some)
 $log.LanguageOption = 'UIFonts'
 $form.Controls.Add($log)
 
 $foot = New-Object Windows.Forms.LinkLabel
-$foot.Text = 'github.com/steve-trantn/MCP-CAD-ADSCivil'; $foot.SetBounds(14, 674, 400, 20)
+$foot.Text = 'github.com/steve-trantn/MCP-CAD-ADSCivil'; $foot.SetBounds(14, 702, 400, 20)
 $foot.add_LinkClicked({ Start-Process 'https://github.com/steve-trantn/MCP-CAD-ADSCivil' })
 $ws = New-Object Windows.Forms.LinkLabel
-$ws.Text = 'Mở thư mục làm việc AI'; $ws.TextAlign = 'TopRight'; $ws.SetBounds(426, 674, 200, 20)
+$ws.Text = 'Mở thư mục làm việc AI'; $ws.TextAlign = 'TopRight'; $ws.SetBounds(426, 702, 200, 20)
 $ws.add_LinkClicked({ New-Item -ItemType Directory -Force $script:Workspace | Out-Null; Start-Process explorer.exe $script:Workspace })
 $form.Controls.AddRange(@($foot, $ws))
 
@@ -186,6 +192,8 @@ function Update-View([switch]$First) {
   $on26 = Test-Ads2026Autoload
   $chk26.Text = 'ADSCivil 2026: tự nạp trợ lý ADSAI khi khởi động' + $(if ($on26) { '   (đang bật)' } elseif (-not $a.dir2026) { '   (không có bản 2026)' } else { '' })
   if ($First) { $chk26.Checked = $on26 -or [bool]($a.dir2026 -and $a.dir2027) }
+  $chkScript.Enabled = $cadChk.zwcad.Enabled -or $cadChk.autocad.Enabled
+  if ($First) { $chkScript.Checked = [bool](Get-Setting 'AllowScript' $false) }
   foreach ($c in $script:ClientList) {
     $mine = @($conn[$c])
     $cliChk[$c].Enabled = $ks[$c].ok -or $c -eq 'gemini'
@@ -214,6 +222,7 @@ function Invoke-Busy([scriptblock]$job) {
 $bConnect.add_Click({
   Invoke-Busy {
     $k = $txtKey.Text; $txtKey.Text = ''
+    Set-Setting 'AllowScript' ([bool]$chkScript.Checked)
     Invoke-Connect (Get-Picked $cadChk) (Get-Picked $cliChk) ($chk26.Checked -and $chk26.Enabled) $k | Out-Null
   }
 })
