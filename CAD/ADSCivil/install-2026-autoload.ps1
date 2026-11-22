@@ -1,18 +1,18 @@
 <#
 .SYNOPSIS
   Bring the ADSCivil 2027 AI assistant (MCP) to ADSCivil 2026 and load it at every ZWCAD start.
-  Usually run through CaiDat.cmd, which finds the folders and asks for admin rights.
+  Usually run by Steve CAD-AI Connect, which finds the folders and asks for admin rights.
 
 .DESCRIPTION
   Install:
     1. Copies Ads.System.AI.Assistant.zrx, AdsMcpServer.exe and AdsAI\ from the 2027 folder to the 2026 folder.
-    2. Backs up ZWCAD.lsp in the 2026 folder and appends zwcad\ads-ai-autoload.lsp (only once).
+    2. Backs up ZWCAD.lsp in the 2026 folder and appends ads-ai-autoload.lsp (only once).
   -Uninstall:
     Removes the auto-load block from ZWCAD.lsp (backup first) and deletes the copied files.
   Close ADSCivil 2026 first. Needs admin rights when the folder is under C:\Program Files.
 
 .EXAMPLE
-  powershell -ExecutionPolicy Bypass -File scripts\install-2026-autoload.ps1 -Source "<2027 folder>" -Target "<2026 folder>"
+  powershell -ExecutionPolicy Bypass -File CAD\ADSCivil\install-2026-autoload.ps1 -Source "<2027 folder>" -Target "<2026 folder>"
 #>
 param(
   [string]$Source = "C:\Program Files\BZS\ADSCivil NW 2027 For ZWCAD 2026",
@@ -22,7 +22,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $marker  = '(defun ads-ai-autoload'
-$snippet = Join-Path $PSScriptRoot '..\zwcad\ads-ai-autoload.lsp'
+$snippet = Join-Path $PSScriptRoot 'ads-ai-autoload.lsp'
 $files   = @('Ads.System.AI.Assistant.zrx', 'AdsMcpServer.exe', 'AdsAI')
 $utf8    = New-Object Text.UTF8Encoding($false)
 $exit    = 0
@@ -70,7 +70,7 @@ try {
     }
     Write-Host ""
     Write-Host "XONG. Mo ADSCivil 2026: dong lenh hien 'ADSCivil AI: da nap...'. Go ADSAI de mo tro ly."
-    Write-Host "Luu y: cai lai ADSCivil 2026 se ghi de ZWCAD.lsp - khi do chay lai CaiDat.cmd."
+    Write-Host "Luu y: cai lai ADSCivil 2026 se ghi de ZWCAD.lsp - khi do bam Connect lai trong Steve CAD-AI Connect."
   }
 } catch {
   Write-Host ""

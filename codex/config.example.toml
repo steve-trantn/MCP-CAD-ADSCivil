@@ -1,8 +1,0 @@
-# Add to %USERPROFILE%\.codex\config.toml (or run scripts\setup-codex.ps1).
-# cwd is required for the Codex desktop app, otherwise:
-#   MCP server startup failed ... The directory name is invalid. (os error 267)
-
-[mcp_servers.adscivil]
-command = 'C:\Program Files\BZS\ADSCivil NW 2027 For ZWCAD 2026\AdsMcpServer.exe'
-cwd = 'C:\Program Files\BZS\ADSCivil NW 2027 For ZWCAD 2026'
-startup_timeout_sec = 60
