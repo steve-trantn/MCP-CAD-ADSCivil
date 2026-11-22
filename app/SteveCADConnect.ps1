@@ -70,7 +70,10 @@ $t1.SetBounds(18, 8, 520, 34)
 $t2 = New-Object Windows.Forms.Label
 $t2.Text = 'Kết nối ZWCAD · AutoCAD · ADSCivil với Claude · ChatGPT · Gemini - một cú bấm'
 $t2.ForeColor = $gold; $t2.SetBounds(20, 44, 600, 22)
-$head.Controls.AddRange(@($t1, $t2))
+$t3 = New-Object Windows.Forms.Label
+$t3.Text = "Hỗ trợ: $($script:Contact)"; $t3.ForeColor = [Drawing.Color]::White; $t3.TextAlign = 'TopRight'
+$t3.SetBounds(400, 16, 226, 20)
+$head.Controls.AddRange(@($t1, $t2, $t3))
 $form.Controls.Add($head)
 
 function New-Check([string]$text, [int]$x, [int]$y, [int]$w = 170) {

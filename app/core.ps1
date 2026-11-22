@@ -12,6 +12,9 @@ $script:VenvPy    = Join-Path $script:AppHome 'venv\Scripts\python.exe'
 $script:Workspace = Join-Path $env:USERPROFILE 'Steve-CAD-AI'
 $script:Utf8      = New-Object Text.UTF8Encoding($false)
 $script:IsGui     = $false
+$script:Author    = 'Steve Tran'
+$script:Phone     = '0987 779 228'
+$script:Contact   = "$($script:Author) | $($script:Phone)"
 
 # open-source CAD-MCP server (https://github.com/daobataotie/CAD-MCP, MIT), pinned to a reviewed commit
 $script:UpstreamSha = 'daf7502951175e01aba9126a702400186ba2d4f9'
@@ -440,7 +443,8 @@ function Install-Self {
   # Settings > Apps entry, so it can be removed like any program
   $k = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$($script:AppId)"
   New-Item $k -Force | Out-Null
-  $vals = @{ DisplayName = $script:AppName; DisplayVersion = ($script:Version -replace '^v', ''); Publisher = 'steve-trantn';
+  $vals = @{ DisplayName = $script:AppName; DisplayVersion = ($script:Version -replace '^v', ''); Publisher = $script:Author;
+             Contact = $script:Author; HelpTelephone = $script:Phone; HelpLink = 'https://github.com/steve-trantn/MCP-CAD-ADSCivil';
              UninstallString = "`"$(Join-Path $script:ToolDir 'Uninstall.cmd')`""; InstallLocation = $script:AppHome;
              DisplayIcon = $ico; URLInfoAbout = 'https://github.com/steve-trantn/MCP-CAD-ADSCivil' }
   foreach ($n in $vals.Keys) { Set-ItemProperty $k $n $vals[$n] }
@@ -505,7 +509,7 @@ function Invoke-Connect([string[]]$Cads, [string[]]$Clients, [bool]$Ads2026 = $f
   Remove-OldInstalls
   Write-Log ""
   if ($fail -eq 0) { Write-Log "XONG. Khởi động lại trợ lý AI (thoát hẳn rồi mở lại) để nhận kết nối mới. Có thể đóng công cụ này." 'ok' }
-  else { Write-Log "Xong, có $fail lỗi - xem các dòng đỏ ở trên." 'warn' }
+  else { Write-Log "Xong, có $fail lỗi - xem các dòng đỏ ở trên. Cần hỗ trợ: $($script:Contact)" 'warn' }
   return ($fail -eq 0)
 }
 

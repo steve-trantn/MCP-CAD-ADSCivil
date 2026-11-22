@@ -6,6 +6,8 @@ Sau khi kết nối, bạn chỉ cần trò chuyện với trợ lý AI và nó 
 
 ![Steve CAD-AI Connect](docs/screenshot.png)
 
+> **Liên hệ hỗ trợ:** Steve Tran | 0987 779 228
+
 ## Dùng thế nào
 
 1. **Tải về:** vào trang [**Releases**](https://github.com/steve-trantn/MCP-CAD-ADSCivil/releases/latest), tải file `Steve-CAD-AI-Connect-*.zip` rồi giải nén.
@@ -73,6 +75,7 @@ powershell -ExecutionPolicy Bypass -File app\SteveCADConnect.ps1 -Uninstall
 | ADSCivil: "Cannot reach ADSCivil" | Mở ADSCivil (không phải ZWCAD thường) và một bản vẽ |
 | Mở nhiều phiên CAD cùng lúc | Server nối vào phiên mà Windows đăng ký trước. Nên chỉ mở một phiên |
 | Kết quả có chữ Trung Quốc | Đó là thông báo của CAD-MCP; AI sẽ dịch khi trả lời |
+| Vẫn chưa được | Liên hệ **Steve Tran, 0987 779 228** |
 
 ## Cấu trúc
 
@@ -85,6 +88,12 @@ CAD/AutoCAD/                lời dặn AI cho AutoCAD
 CAD/ADSCivil/               lời dặn AI, tự nạp ADSCivil 2026 (ads-ai-autoload.lsp, install-2026-autoload.ps1)
 templates/                  lời dặn chung, launcher Gemini
 ```
+
+## Liên hệ
+
+**Steve Tran** · 0987 779 228 · [github.com/steve-trantn](https://github.com/steve-trantn)
+
+Báo lỗi hoặc góp ý: gọi trực tiếp, hoặc mở [Issue](https://github.com/steve-trantn/MCP-CAD-ADSCivil/issues) trên GitHub.
 
 ## Bản quyền
 
