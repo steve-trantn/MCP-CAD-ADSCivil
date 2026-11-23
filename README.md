@@ -1,3 +1,9 @@
+> [!IMPORTANT]
+> **Repo này đã chuyển sang [steve-trantn/Steve-AI-Connect](https://github.com/steve-trantn/Steve-AI-Connect)** và được lưu trữ (chỉ đọc).
+> Bản mới **Steve CAD-AI Connect v1.0.0** cài bằng một file exe, có hướng dẫn 3 bước: [tải tại đây](https://github.com/steve-trantn/Steve-AI-Connect/releases/latest).
+>
+> **This repository has moved to [steve-trantn/Steve-AI-Connect](https://github.com/steve-trantn/Steve-AI-Connect)** and is archived (read-only).
+
 # Steve CAD-AI Connect
 
 **Kết nối ZWCAD · AutoCAD · ADSCivil với Claude · ChatGPT · Gemini bằng một cú bấm.**
